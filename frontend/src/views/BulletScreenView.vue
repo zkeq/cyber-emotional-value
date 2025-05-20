@@ -158,7 +158,7 @@ export default {
   methods: {
     initWebSocket() {
       // 构建WebSocket URL，包含字数范围参数
-      const wsUrl = `ws://localhost:8000/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
+      const wsUrl = `wss://emotional-value-api.onmicrosoft.cn/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
       
       // 创建WebSocket连接
       this.socket = new WebSocket(wsUrl);
