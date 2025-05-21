@@ -114,8 +114,10 @@ export default {
       activeBullets: [],
       // 轨道系统 - 用于防止弹幕重叠
       tracks: [],
-      trackCount: 10, // 轨道数量
+      trackCount: 12, // 轨道数量
       trackHeight: 0,  // 将在mounted中计算
+      shuffledTracks: [], // 打乱顺序的轨道序列
+      currentTrackIndex: 0, // 当前使用的轨道索引，用于轮询
       // 字数设置
       minLength: 5,
       maxLength: 15,
@@ -237,8 +239,26 @@ export default {
         lastBulletTime: 0 // 上一个弹幕的添加时间
       }));
       
+      // 创建并打乱轨道顺序
+      this.shuffleTrackOrder();
+      
+      // 重置当前轨道索引
+      this.currentTrackIndex = 0;
+      
       // 添加窗口大小改变事件监听器，重新计算轨道高度
       window.addEventListener('resize', this.handleResize);
+    },
+    
+    // 打乱轨道顺序
+    shuffleTrackOrder() {
+      // 创建一个包含所有轨道索引的数组
+      this.shuffledTracks = Array.from({ length: this.trackCount }, (_, i) => i);
+      
+      // Fisher-Yates 洗牌算法打乱数组
+      for (let i = this.shuffledTracks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [this.shuffledTracks[i], this.shuffledTracks[j]] = [this.shuffledTracks[j], this.shuffledTracks[i]];
+      }
     },
     
     // 响应窗口大小变化
@@ -250,116 +270,20 @@ export default {
       this.trackHeight = availableHeight / this.trackCount;
     },
     
-    // 找到可用的轨道
+    // 找到可用的轨道 - 使用打乱后的轨道顺序
     findAvailableTrack() {
-      // 尝试找一个完全空闲的轨道
-      for (let i = 0; i < this.tracks.length; i++) {
-        const track = this.tracks[i];
-        if (!track.occupied) {
-          return i;
-        }
+      // 获取当前应该使用的轨道索引（从打乱后的轨道序列中取）
+      const trackIndex = this.shuffledTracks[this.currentTrackIndex];
+      
+      // 更新当前索引，准备下一次使用
+      this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackCount;
+      
+      // 当所有轨道都被使用一遍后，重新打乱轨道顺序
+      if (this.currentTrackIndex === 0) {
+        this.shuffleTrackOrder();
       }
       
-      // 计算每个轨道的安全程度（考虑弹幕长度和动画进度）
-      const trackSafetyScores = this.calculateTrackSafetyScores();
-      
-      // 找到安全度最高的轨道
-      let safestTrack = 0;
-      let highestSafety = -Infinity;
-      
-      for (let i = 0; i < trackSafetyScores.length; i++) {
-        if (trackSafetyScores[i] > highestSafety) {
-          highestSafety = trackSafetyScores[i];
-          safestTrack = i;
-        }
-      }
-      
-      // 如果安全度太低（可能会重叠），则考虑等待一小段时间
-      if (highestSafety < 0.3) {
-        // 在极端情况下，还是随机选一个轨道，避免完全卡住
-        if (Math.random() < 0.3) {
-          return Math.floor(Math.random() * this.tracks.length);
-        }
-      }
-      
-      return safestTrack;
-    },
-    
-    // 计算每个轨道的安全程度（0-1，越高越安全）
-    calculateTrackSafetyScores() {
-      const scores = Array(this.trackCount).fill(1); // 初始所有轨道都很安全
-      const screenWidth = window.innerWidth;
-      const now = Date.now();
-      
-      // 遍历所有活动弹幕，计算它们对各轨道安全度的影响
-      for (const bullet of this.activeBullets) {
-        const trackIndex = bullet.trackIndex;
-        
-        // 估算弹幕宽度（根据文本长度）
-        const estimatedWidth = this.estimateBulletWidth(bullet.content);
-        
-        // 计算弹幕已经运行的时间(ms)
-        const elapsedTime = now - this.tracks[trackIndex].lastBulletTime;
-        
-        // 计算弹幕已经走过的距离百分比（0-1）
-        const progressPercent = Math.min(1, elapsedTime / (bullet.duration * 1000));
-        
-        // 计算弹幕当前位置（屏幕宽度为1）
-        // 从1（刚进入）到-estimatedWidth/screenWidth（完全离开）
-        const position = 1 - progressPercent * (1 + estimatedWidth / screenWidth);
-        
-        // 如果弹幕还在屏幕上
-        if (position > -estimatedWidth / screenWidth) {
-          // 计算安全度 - 弹幕越靠近屏幕右侧，安全度越低
-          // 弹幕在屏幕左边（完全显示后）安全度提高
-          const safety = position < 0 ? (1 + position * 5) : (1 - position);
-          
-          // 更新该轨道的安全度
-          scores[trackIndex] = Math.min(scores[trackIndex], safety);
-          
-          // 如果弹幕刚刚进入屏幕，也会影响到相邻轨道的安全度（避免很长的弹幕垂直靠得太近）
-          if (position > 0.7 && position < 1) {
-            const adjacentTrackInfluence = 0.7; // 相邻轨道影响因子
-            
-            // 影响上方相邻轨道
-            if (trackIndex > 0) {
-              scores[trackIndex - 1] = Math.min(scores[trackIndex - 1], safety * adjacentTrackInfluence);
-            }
-            
-            // 影响下方相邻轨道
-            if (trackIndex < this.trackCount - 1) {
-              scores[trackIndex + 1] = Math.min(scores[trackIndex + 1], safety * adjacentTrackInfluence);
-            }
-          }
-        }
-      }
-      
-      return scores;
-    },
-    
-    // 根据文本内容估算弹幕宽度（像素）
-    estimateBulletWidth(content) {
-      // 简单估算：中文字符约24px，英文字符约14px，空格约8px
-      // 这是粗略估算，实际宽度还与字体、字重等有关
-      let width = 0;
-      for (let i = 0; i < content.length; i++) {
-        const char = content.charAt(i);
-        if (/[\u4e00-\u9fa5]/.test(char)) {
-          // 中文字符
-          width += 24;
-        } else if (char === ' ') {
-          // 空格
-          width += 8;
-        } else {
-          // 其他字符（英文、数字等）
-          width += 14;
-        }
-      }
-      
-      // 加上弹幕的padding和边距
-      width += 30;
-      
-      return width;
+      return trackIndex;
     },
     
     // 添加一条新弹幕
