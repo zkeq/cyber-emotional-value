@@ -38,6 +38,51 @@
       </div>
     </div>
     
+    <!-- 字数设置面板 -->
+    <div class="settings-panel" :class="{ 'settings-open': settingsOpen }">
+      <div class="settings-header" @click="toggleSettings">
+        <span class="settings-icon">⚙️</span>
+        <span class="settings-title">字数设置</span>
+        <span class="settings-toggle">{{ settingsOpen ? '▼' : '▲' }}</span>
+      </div>
+      
+      <div class="settings-content" v-if="settingsOpen">
+        <div class="length-sliders">
+          <div class="slider-group">
+            <label>最小字数: {{ minLength }}</label>
+            <input 
+              type="range" 
+              class="slider" 
+              v-model.number="minLength" 
+              min="1" 
+              max="30" 
+              @input="validateLengthRange"
+            >
+          </div>
+          
+          <div class="slider-group">
+            <label>最大字数: {{ maxLength }}</label>
+            <input 
+              type="range" 
+              class="slider" 
+              v-model.number="maxLength" 
+              min="1" 
+              max="50" 
+              @input="validateLengthRange"
+            >
+          </div>
+        </div>
+        
+        <div class="length-preview">
+          当前设置: {{ minLength }}-{{ maxLength }}字
+        </div>
+        
+        <button class="apply-btn" @click="applySettings">
+          应用设置
+        </button>
+      </div>
+    </div>
+    
     <!-- 返回按钮 -->
     <button class="back-btn" @click="goBack">
       <span class="back-icon">←</span> 返回
@@ -113,7 +158,7 @@ export default {
   methods: {
     initWebSocket() {
       // 构建WebSocket URL，包含字数范围参数
-      const wsUrl = `wss://emotional-value-api.onmicrosoft.cn/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
+      const wsUrl = `ws://localhost:8000/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
       
       // 创建WebSocket连接
       this.socket = new WebSocket(wsUrl);
@@ -131,6 +176,13 @@ export default {
           // 会话开始消息
           this.sessionId = data.session_id;
           console.log('会话已开始:', this.sessionId);
+          
+          // 如果是参数更新后的新会话，显示提示
+          if (data.is_update) {
+            console.log('字数设置已更新:', data.min_length, '-', data.max_length);
+            // 可以添加一个临时提示
+            this.addBullet(`字数已更新为 ${data.min_length}-${data.max_length} 字`);
+          }
         } else if (data.type === 'message') {
           // 弹幕消息
           this.addBullet(data.content);

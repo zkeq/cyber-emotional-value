@@ -105,6 +105,19 @@ async def websocket_endpoint(
                     # 使用新参数重新启动
                     session_id = f"session:{uuid.uuid4()}"
                     await websocket_manager.connect(websocket, session_id)
+                    
+                    # 发送新会话开始消息，通知前端新的session_id
+                    await websocket.send_json({
+                        "type": "session_start",
+                        "session_id": session_id,
+                        "emotion_type": emotion_type,
+                        "min_length": new_min,
+                        "max_length": new_max,
+                        "timestamp": time.time(),
+                        "is_update": True  # 标记这是参数更新后的新会话
+                    })
+                    
+                    # 启动新的消息流
                     await websocket_manager.start_message_stream(emotion_type, session_id, new_min, new_max)
                     
                     # 更新当前参数
