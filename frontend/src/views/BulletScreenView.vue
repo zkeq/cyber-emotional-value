@@ -112,6 +112,10 @@ export default {
       // 弹幕相关
       bulletId: 0,
       activeBullets: [],
+      // 轨道系统 - 用于防止弹幕重叠
+      tracks: [],
+      trackCount: 10, // 轨道数量
+      trackHeight: 0,  // 将在mounted中计算
       // 字数设置
       minLength: 5,
       maxLength: 15,
@@ -145,6 +149,9 @@ export default {
     this.timerInterval = setInterval(() => {
       this.sessionDuration = (Date.now() - this.sessionStartTime) / 1000;
     }, 100);
+
+    // 初始化轨道系统
+    this.initTrackSystem();
   },
   beforeUnmount() {
     // 清理资源
@@ -154,6 +161,9 @@ export default {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+    
+    // 移除窗口大小改变事件监听器
+    window.removeEventListener('resize', this.handleResize);
   },
   methods: {
     initWebSocket() {
@@ -209,16 +219,171 @@ export default {
       };
     },
     
+    // 初始化轨道系统
+    initTrackSystem() {
+      // 计算可见区域高度（排除统计面板高度）
+      const statsPanel = document.querySelector('.stats-panel');
+      const statsPanelHeight = statsPanel ? statsPanel.offsetHeight : 60; // 默认值60px
+      
+      // 计算可用于弹幕的区域高度（减去统计面板高度和一些边距）
+      const availableHeight = window.innerHeight - statsPanelHeight - 40; // 40px是顶部和底部的边距
+      
+      // 计算每个轨道的高度
+      this.trackHeight = availableHeight / this.trackCount;
+      
+      // 初始化所有轨道为可用状态
+      this.tracks = Array(this.trackCount).fill(null).map(() => ({
+        occupied: false,  // 当前是否有弹幕占用
+        lastBulletTime: 0 // 上一个弹幕的添加时间
+      }));
+      
+      // 添加窗口大小改变事件监听器，重新计算轨道高度
+      window.addEventListener('resize', this.handleResize);
+    },
+    
+    // 响应窗口大小变化
+    handleResize() {
+      // 重新计算轨道高度
+      const statsPanel = document.querySelector('.stats-panel');
+      const statsPanelHeight = statsPanel ? statsPanel.offsetHeight : 60;
+      const availableHeight = window.innerHeight - statsPanelHeight - 40;
+      this.trackHeight = availableHeight / this.trackCount;
+    },
+    
+    // 找到可用的轨道
+    findAvailableTrack() {
+      // 尝试找一个完全空闲的轨道
+      for (let i = 0; i < this.tracks.length; i++) {
+        const track = this.tracks[i];
+        if (!track.occupied) {
+          return i;
+        }
+      }
+      
+      // 计算每个轨道的安全程度（考虑弹幕长度和动画进度）
+      const trackSafetyScores = this.calculateTrackSafetyScores();
+      
+      // 找到安全度最高的轨道
+      let safestTrack = 0;
+      let highestSafety = -Infinity;
+      
+      for (let i = 0; i < trackSafetyScores.length; i++) {
+        if (trackSafetyScores[i] > highestSafety) {
+          highestSafety = trackSafetyScores[i];
+          safestTrack = i;
+        }
+      }
+      
+      // 如果安全度太低（可能会重叠），则考虑等待一小段时间
+      if (highestSafety < 0.3) {
+        // 在极端情况下，还是随机选一个轨道，避免完全卡住
+        if (Math.random() < 0.3) {
+          return Math.floor(Math.random() * this.tracks.length);
+        }
+      }
+      
+      return safestTrack;
+    },
+    
+    // 计算每个轨道的安全程度（0-1，越高越安全）
+    calculateTrackSafetyScores() {
+      const scores = Array(this.trackCount).fill(1); // 初始所有轨道都很安全
+      const screenWidth = window.innerWidth;
+      const now = Date.now();
+      
+      // 遍历所有活动弹幕，计算它们对各轨道安全度的影响
+      for (const bullet of this.activeBullets) {
+        const trackIndex = bullet.trackIndex;
+        
+        // 估算弹幕宽度（根据文本长度）
+        const estimatedWidth = this.estimateBulletWidth(bullet.content);
+        
+        // 计算弹幕已经运行的时间(ms)
+        const elapsedTime = now - this.tracks[trackIndex].lastBulletTime;
+        
+        // 计算弹幕已经走过的距离百分比（0-1）
+        const progressPercent = Math.min(1, elapsedTime / (bullet.duration * 1000));
+        
+        // 计算弹幕当前位置（屏幕宽度为1）
+        // 从1（刚进入）到-estimatedWidth/screenWidth（完全离开）
+        const position = 1 - progressPercent * (1 + estimatedWidth / screenWidth);
+        
+        // 如果弹幕还在屏幕上
+        if (position > -estimatedWidth / screenWidth) {
+          // 计算安全度 - 弹幕越靠近屏幕右侧，安全度越低
+          // 弹幕在屏幕左边（完全显示后）安全度提高
+          const safety = position < 0 ? (1 + position * 5) : (1 - position);
+          
+          // 更新该轨道的安全度
+          scores[trackIndex] = Math.min(scores[trackIndex], safety);
+          
+          // 如果弹幕刚刚进入屏幕，也会影响到相邻轨道的安全度（避免很长的弹幕垂直靠得太近）
+          if (position > 0.7 && position < 1) {
+            const adjacentTrackInfluence = 0.7; // 相邻轨道影响因子
+            
+            // 影响上方相邻轨道
+            if (trackIndex > 0) {
+              scores[trackIndex - 1] = Math.min(scores[trackIndex - 1], safety * adjacentTrackInfluence);
+            }
+            
+            // 影响下方相邻轨道
+            if (trackIndex < this.trackCount - 1) {
+              scores[trackIndex + 1] = Math.min(scores[trackIndex + 1], safety * adjacentTrackInfluence);
+            }
+          }
+        }
+      }
+      
+      return scores;
+    },
+    
+    // 根据文本内容估算弹幕宽度（像素）
+    estimateBulletWidth(content) {
+      // 简单估算：中文字符约24px，英文字符约14px，空格约8px
+      // 这是粗略估算，实际宽度还与字体、字重等有关
+      let width = 0;
+      for (let i = 0; i < content.length; i++) {
+        const char = content.charAt(i);
+        if (/[\u4e00-\u9fa5]/.test(char)) {
+          // 中文字符
+          width += 24;
+        } else if (char === ' ') {
+          // 空格
+          width += 8;
+        } else {
+          // 其他字符（英文、数字等）
+          width += 14;
+        }
+      }
+      
+      // 加上弹幕的padding和边距
+      width += 30;
+      
+      return width;
+    },
+    
     // 添加一条新弹幕
     addBullet(content) {
-      // 生成随机高度（避免顶部和底部）
-      const top = 10 + Math.random() * 60;
+      // 找到一个可用轨道
+      const trackIndex = this.findAvailableTrack();
+      
+      // 计算弹幕在轨道中的top位置（百分比）
+      const top = (trackIndex * this.trackHeight + this.trackHeight / 2) / window.innerHeight * 100;
+      
+      // 标记该轨道为已占用
+      this.tracks[trackIndex].occupied = true;
+      this.tracks[trackIndex].lastBulletTime = Date.now();
       
       // 随机选择一个颜色
       const color = this.colors[Math.floor(Math.random() * this.colors.length)];
       
-      // 随机生成动画持续时间（秒），增加持续时间使弹幕不那么密集
-      const duration = 12 + Math.random() * 6;
+      // 根据文本长度调整动画持续时间
+      // 较长的文本需要更快的速度，减少阻塞问题
+      const baseSpeed = 12; // 基础速度（秒）
+      const contentLength = content.length;
+      // 文本越长，速度因子越小（动画时间越短，速度越快）
+      const speedFactor = Math.max(0.6, Math.min(1, 15 / Math.max(15, contentLength))); 
+      const duration = baseSpeed * speedFactor + Math.random() * 1; // 添加少量随机性
       
       // 创建新弹幕对象
       const newBullet = {
@@ -226,17 +391,25 @@ export default {
         content,
         top,
         color,
-        duration
+        duration,
+        trackIndex, // 存储轨道索引，用于释放轨道
+        timestamp: Date.now() // 记录创建时间戳
       };
       
       // 添加到活动弹幕列表
       this.activeBullets.push(newBullet);
       
-      // 设置定时器，在动画结束后移除弹幕
+      // 设置定时器，在动画结束后移除弹幕并释放轨道
       setTimeout(() => {
+        // 移除弹幕
         const index = this.activeBullets.findIndex(b => b.id === newBullet.id);
         if (index !== -1) {
           this.activeBullets.splice(index, 1);
+        }
+        
+        // 释放轨道
+        if (this.tracks[trackIndex]) {
+          this.tracks[trackIndex].occupied = false;
         }
       }, duration * 1000);
     },
