@@ -37,6 +37,52 @@
         <span class="stats-value emotion-type">{{ emotionType }}</span>
       </div>
     </div>
+
+
+    <!-- 字数设置面板 -->
+    <!-- <div class="settings-panel" :class="{ 'settings-open': settingsOpen }">
+      <div class="settings-header" @click="toggleSettings">
+        <span class="settings-icon">⚙️</span>
+        <span class="settings-title">字数设置</span>
+        <span class="settings-toggle">{{ settingsOpen ? '▼' : '▲' }}</span>
+      </div>
+      
+      <div class="settings-content" v-if="settingsOpen">
+        <div class="length-sliders">
+          <div class="slider-group">
+            <label>最小字数: {{ minLength }}</label>
+            <input 
+              type="range" 
+              class="slider" 
+              v-model.number="minLength" 
+              min="1" 
+              max="30" 
+              @input="validateLengthRange"
+            >
+          </div>
+          
+          <div class="slider-group">
+            <label>最大字数: {{ maxLength }}</label>
+            <input 
+              type="range" 
+              class="slider" 
+              v-model.number="maxLength" 
+              min="1" 
+              max="50" 
+              @input="validateLengthRange"
+            >
+          </div>
+        </div>
+        
+        <div class="length-preview">
+          当前设置: {{ minLength }}-{{ maxLength }}字
+        </div>
+        
+        <button class="apply-btn" @click="applySettings">
+          应用设置
+        </button>
+      </div>
+    </div> -->
     
     <!-- 返回按钮 -->
     <button class="back-btn" @click="goBack">
