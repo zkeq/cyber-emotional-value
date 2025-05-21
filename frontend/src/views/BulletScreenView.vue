@@ -37,8 +37,7 @@
         <span class="stats-value emotion-type">{{ emotionType }}</span>
       </div>
     </div>
-
-
+    
     <!-- 字数设置面板 -->
     <!-- <div class="settings-panel" :class="{ 'settings-open': settingsOpen }">
       <div class="settings-header" @click="toggleSettings">
@@ -177,6 +176,13 @@ export default {
           // 会话开始消息
           this.sessionId = data.session_id;
           console.log('会话已开始:', this.sessionId);
+          
+          // 如果是参数更新后的新会话，显示提示
+          if (data.is_update) {
+            console.log('字数设置已更新:', data.min_length, '-', data.max_length);
+            // 可以添加一个临时提示
+            this.addBullet(`字数已更新为 ${data.min_length}-${data.max_length} 字`);
+          }
         } else if (data.type === 'message') {
           // 弹幕消息
           this.addBullet(data.content);
@@ -184,6 +190,11 @@ export default {
           // 更新统计信息
           this.tokenCount = data.token_count;
           this.messageCount = data.message_count;
+        } else if (data.type === 'params_updated') {
+          // 参数更新确认消息
+          console.log('参数更新已确认:', data.min_length, '-', data.max_length);
+          // 可以在UI上显示更新成功的提示
+          this.addBullet(`字数设置已成功应用: ${data.min_length}-${data.max_length} 字`);
         }
       };
       

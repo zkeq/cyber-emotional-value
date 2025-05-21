@@ -99,17 +99,16 @@ async def websocket_endpoint(
                     new_min = max(1, min(30, new_min))
                     new_max = max(new_min, min(50, new_max))
                     
-                    # 停止当前生成
-                    websocket_manager.disconnect(session_id)
+                    # 创建新会话ID，但先不断开旧会话
+                    new_session_id = f"session:{uuid.uuid4()}"
                     
-                    # 使用新参数重新启动
-                    session_id = f"session:{uuid.uuid4()}"
-                    await websocket_manager.connect(websocket, session_id)
+                    # 先建立新会话连接
+                    await websocket_manager.connect(websocket, new_session_id)
                     
                     # 发送新会话开始消息，通知前端新的session_id
                     await websocket.send_json({
                         "type": "session_start",
-                        "session_id": session_id,
+                        "session_id": new_session_id,
                         "emotion_type": emotion_type,
                         "min_length": new_min,
                         "max_length": new_max,
@@ -118,11 +117,26 @@ async def websocket_endpoint(
                     })
                     
                     # 启动新的消息流
-                    await websocket_manager.start_message_stream(emotion_type, session_id, new_min, new_max)
+                    await websocket_manager.start_message_stream(emotion_type, new_session_id, new_min, new_max)
                     
-                    # 更新当前参数
+                    # 确保新会话已经开始生成消息后，再停止旧会话
+                    await asyncio.sleep(1.0)  # 给新会话一点时间启动
+                    
+                    # 现在安全地停止旧会话
+                    websocket_manager.disconnect(session_id)
+                    
+                    # 更新当前会话ID和参数
+                    session_id = new_session_id
                     min_length = new_min
                     max_length = new_max
+                    
+                    # 发送确认消息
+                    await websocket.send_json({
+                        "type": "params_updated",
+                        "min_length": min_length,
+                        "max_length": max_length,
+                        "success": True
+                    })
             except:
                 # 忽略无效消息
                 pass
@@ -139,4 +153,4 @@ async def websocket_endpoint(
         print(f"WebSocket连接断开: {session_id}, 持续时间: {session_duration:.2f}秒, Token数: {total_tokens}")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=9096, reload=True)
