@@ -1,9 +1,10 @@
 <template>
-  <div class="bullet-component">
+  <div class="absolute w-full h-full top-0 left-0 overflow-hidden pointer-events-none">
     <div 
       v-for="bullet in bullets" 
       :key="bullet.id" 
-      class="bullet-item"
+      class="absolute whitespace-nowrap text-xl md:text-2xl font-medium py-2 px-4 rounded-full bg-opacity-80 shadow-md transform transition-all duration-500"
+      :class="bullet.isSystem ? 'bg-white text-primary-600' : 'bg-gradient-to-r from-primary-100 to-secondary-100'"
       :style="{ 
         top: bullet.top + '%', 
         animationDuration: bullet.duration + 's',
@@ -27,30 +28,7 @@ export default {
 }
 </script>
 
-<style scoped>
-.bullet-component {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.bullet-item {
-  position: absolute;
-  white-space: nowrap;
-  font-size: 24px;
-  font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 20px;
-  background-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  animation: bulletMove linear;
-  transform: translateX(100vw);
-}
-
+<style>
 @keyframes bulletMove {
   from {
     transform: translateX(100vw);
@@ -60,9 +38,8 @@ export default {
   }
 }
 
-@media (max-width: 768px) {
-  .bullet-item {
-    font-size: 18px;
-  }
+.bullet-item {
+  animation: bulletMove linear;
+  transform: translateX(100vw);
 }
 </style>

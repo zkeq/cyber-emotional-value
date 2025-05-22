@@ -1,29 +1,46 @@
 <template>
-  <div class="welcome-container">
-    <div class="welcome-card">
-      <div class="logo">
-        <h1 class="logo-text">夸夸网站</h1>
+  <div class="min-h-screen w-full bg-gradient-to-br from-primary-50 to-secondary-50 flex justify-center items-center p-4 md:p-6">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-cute p-6 md:p-8 transform transition-all duration-500 hover:scale-[1.02] animate-fadeIn">
+      <!-- 标题区域 -->
+      <div class="mb-6 animate-float">
+        <div class="flex justify-center mb-2">
+          <div class="h-16 w-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center shadow-lg">
+            <span class="text-3xl">💖</span>
+          </div>
+        </div>
+        <h1 class="text-4xl font-bold bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent mb-1">夸夸网站</h1>
+        <h2 class="text-xl text-gray-600 font-medium">今天想要怎样的情绪价值？</h2>
       </div>
-      <h2 class="welcome-title">今天想要怎样的情绪价值？</h2>
-      <div class="input-container">
-        <input 
-          type="text" 
-          class="input emotion-input" 
-          v-model="emotionType"
-          placeholder="例如：鼓励、温暖、治愈、自信..."
-          @keyup.enter="startBulletScreen"
-        >
+      
+      <!-- 输入区域 -->
+      <div class="space-y-6">
+        <div class="relative group">
+          <input 
+            type="text" 
+            class="input-cute text-center text-lg placeholder-primary-300"
+            v-model="emotionType"
+            placeholder="例如：鼓励、温暖、治愈、自信..."
+            @keyup.enter="startBulletScreen"
+          >
+          <div class="absolute inset-0 rounded-xl border-2 border-primary-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+        </div>
         
         <!-- 字数范围选择 -->
-        <div class="length-settings">
-          <h3 class="settings-title">自定义字数范围</h3>
+        <div class="bg-gradient-to-r from-primary-50 to-secondary-50 rounded-2xl p-5 shadow-sm">
+          <h3 class="text-primary-700 font-medium text-lg mb-4 flex items-center">
+            <span class="mr-2">✨</span>
+            自定义字数范围
+          </h3>
           
-          <div class="length-sliders">
-            <div class="slider-group">
-              <label>最小字数: {{ minLength }}</label>
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <label class="text-sm text-gray-600">最小字数</label>
+                <span class="text-sm bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{{ minLength }}</span>
+              </div>
               <input 
                 type="range" 
-                class="slider" 
+                class="w-full h-2 bg-primary-100 rounded-lg appearance-none cursor-pointer accent-primary-500" 
                 v-model.number="minLength" 
                 min="1" 
                 max="30" 
@@ -31,11 +48,14 @@
               >
             </div>
             
-            <div class="slider-group">
-              <label>最大字数: {{ maxLength }}</label>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <label class="text-sm text-gray-600">最大字数</label>
+                <span class="text-sm bg-secondary-100 text-secondary-700 px-2 py-0.5 rounded-full font-medium">{{ maxLength }}</span>
+              </div>
               <input 
                 type="range" 
-                class="slider" 
+                class="w-full h-2 bg-secondary-100 rounded-lg appearance-none cursor-pointer accent-secondary-500" 
                 v-model.number="maxLength" 
                 min="1" 
                 max="50" 
@@ -44,17 +64,23 @@
             </div>
           </div>
           
-          <div class="length-preview">
-            当前设置: {{ minLength }}-{{ maxLength }}字
+          <div class="mt-3 text-center">
+            <span class="inline-block bg-white px-3 py-1 rounded-full text-sm font-medium text-primary-600 shadow-sm">
+              当前设置: {{ minLength }}-{{ maxLength }}字
+            </span>
           </div>
         </div>
         
-        <button class="btn start-btn" @click="startBulletScreen">
+        <button 
+          class="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-medium text-lg transition-all duration-300 transform hover:scale-[1.03] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+          @click="startBulletScreen"
+        >
           开始夸夸
-          <span class="btn-icon">❤️</span>
+          <span class="ml-2 inline-block animate-bounce-slow">❤️</span>
         </button>
       </div>
-      <div class="welcome-footer">
+      
+      <div class="mt-6 text-center text-gray-500 text-sm">
         <p>每天都需要一些情绪价值，让我们来夸夸你吧~</p>
       </div>
     </div>
@@ -98,155 +124,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.welcome-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: 20px;
-}
-
-.welcome-card {
-  background-color: white;
-  border-radius: 20px;
-  padding: 40px;
-  width: 100%;
-  max-width: 500px;
-  text-align: center;
-  box-shadow: 0 10px 30px var(--shadow-color);
-  animation: pulse 3s infinite ease-in-out;
-}
-
-.logo {
-  margin-bottom: 20px;
-}
-
-.logo-text {
-  font-size: 2.5rem;
-  color: var(--primary-color);
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-
-.welcome-title {
-  font-size: 1.5rem;
-  margin-bottom: 30px;
-  color: var(--text-color);
-}
-
-.input-container {
-  margin-bottom: 30px;
-}
-
-.emotion-input {
-  margin-bottom: 15px;
-  text-align: center;
-  font-size: 18px;
-}
-
-/* 字数范围设置样式 */
-.length-settings {
-  background-color: #f9f9f9;
-  border-radius: 15px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.settings-title {
-  font-size: 16px;
-  margin-bottom: 15px;
-  color: var(--secondary-color);
-}
-
-.length-sliders {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 10px;
-}
-
-.slider-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.slider-group label {
-  margin-bottom: 5px;
-  font-size: 14px;
-  color: #666;
-}
-
-.slider {
-  width: 100%;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #e0e0e0;
-  outline: none;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.slider::-webkit-slider-thumb:hover {
-  background: var(--secondary-color);
-  transform: scale(1.1);
-}
-
-.length-preview {
-  font-size: 14px;
-  color: var(--primary-color);
-  font-weight: 500;
-  margin-top: 5px;
-}
-
-.start-btn {
-  width: 100%;
-  font-size: 18px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.btn-icon {
-  margin-left: 8px;
-  font-size: 20px;
-}
-
-.welcome-footer {
-  font-size: 14px;
-  color: #888;
-}
-
-@media (max-width: 768px) {
-  .welcome-card {
-    padding: 30px 20px;
-  }
-  
-  .logo-text {
-    font-size: 2rem;
-  }
-  
-  .welcome-title {
-    font-size: 1.2rem;
-  }
-  
-  .length-settings {
-    padding: 10px;
-  }
-}
-</style>

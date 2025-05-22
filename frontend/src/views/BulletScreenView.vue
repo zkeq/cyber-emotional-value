@@ -1,12 +1,13 @@
 <template>
-  <div class="bullet-screen-container">
+  <div class="relative w-full h-screen overflow-hidden bg-gradient-to-br from-primary-50 to-secondary-50">
     <!-- 弹幕区域 -->
-    <div class="bullet-screen" ref="bulletScreen">
+    <div class="absolute w-full h-full top-0 left-0 overflow-hidden" ref="bulletScreen">
       <transition-group name="bullet" tag="div">
         <div 
           v-for="bullet in activeBullets" 
           :key="bullet.id" 
-          class="bullet-item"
+          class="absolute whitespace-nowrap text-xl md:text-2xl font-medium py-2 px-4 rounded-full bg-opacity-80 shadow-md transform transition-all duration-500"
+          :class="bullet.isSystem ? 'bg-white text-primary-600' : 'bg-gradient-to-r from-primary-100 to-secondary-100'"
           :style="{ 
             top: bullet.top + '%', 
             animationDuration: bullet.duration + 's',
@@ -19,40 +20,49 @@
     </div>
     
     <!-- 底部统计信息 -->
-    <div class="stats-panel">
-      <div class="stats-item">
-        <span class="stats-label">已进入网站</span>
-        <span class="stats-value">{{ formatTime(sessionDuration) }}</span>
+    <div class="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-white bg-opacity-90 backdrop-blur-sm shadow-lg z-10 rounded-t-xl">
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">已进入网站</span>
+        <span class="text-base md:text-lg font-bold text-primary-600">{{ formatTime(sessionDuration) }}</span>
       </div>
-      <div class="stats-item">
-        <span class="stats-label">消耗Token</span>
-        <span class="stats-value">{{ tokenCount }}</span>
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">消耗Token</span>
+        <span class="text-base md:text-lg font-bold text-primary-600">{{ tokenCount }}</span>
       </div>
-      <div class="stats-item">
-        <span class="stats-label">收到消息</span>
-        <span class="stats-value">{{ messageCount }}</span>
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">收到消息</span>
+        <span class="text-base md:text-lg font-bold text-primary-600">{{ messageCount }}</span>
       </div>
-      <div class="stats-item">
-        <span class="stats-label">情绪类型</span>
-        <span class="stats-value emotion-type">{{ emotionType }}</span>
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">情绪类型</span>
+        <span class="text-base md:text-lg font-bold text-secondary-600">{{ emotionType }}</span>
       </div>
     </div>
     
     <!-- 字数设置面板 -->
-    <!-- <div class="settings-panel" :class="{ 'settings-open': settingsOpen }">
-      <div class="settings-header" @click="toggleSettings">
-        <span class="settings-icon">⚙️</span>
-        <span class="settings-title">字数设置</span>
-        <span class="settings-toggle">{{ settingsOpen ? '▼' : '▲' }}</span>
+    <div 
+      class="fixed top-5 right-5 w-64 md:w-72 bg-white rounded-2xl shadow-cute overflow-hidden transition-all duration-300 transform z-20"
+      :class="settingsOpen ? 'translate-y-0' : 'translate-y-[-85%]'"
+    >
+      <div 
+        class="flex items-center px-4 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white cursor-pointer"
+        @click="toggleSettings"
+      >
+        <span class="mr-2 text-lg">⚙️</span>
+        <span class="flex-grow font-medium">字数设置</span>
+        <span class="transform transition-transform duration-300" :class="settingsOpen ? 'rotate-180' : ''">▼</span>
       </div>
       
-      <div class="settings-content" v-if="settingsOpen">
-        <div class="length-sliders">
-          <div class="slider-group">
-            <label>最小字数: {{ minLength }}</label>
+      <div class="p-4" v-if="settingsOpen">
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-sm text-gray-600">最小字数</label>
+              <span class="text-sm bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{{ minLength }}</span>
+            </div>
             <input 
               type="range" 
-              class="slider" 
+              class="w-full h-2 bg-primary-100 rounded-lg appearance-none cursor-pointer accent-primary-500" 
               v-model.number="minLength" 
               min="1" 
               max="30" 
@@ -60,11 +70,14 @@
             >
           </div>
           
-          <div class="slider-group">
-            <label>最大字数: {{ maxLength }}</label>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-sm text-gray-600">最大字数</label>
+              <span class="text-sm bg-secondary-100 text-secondary-700 px-2 py-0.5 rounded-full font-medium">{{ maxLength }}</span>
+            </div>
             <input 
               type="range" 
-              class="slider" 
+              class="w-full h-2 bg-secondary-100 rounded-lg appearance-none cursor-pointer accent-secondary-500" 
               v-model.number="maxLength" 
               min="1" 
               max="50" 
@@ -73,19 +86,28 @@
           </div>
         </div>
         
-        <div class="length-preview">
-          当前设置: {{ minLength }}-{{ maxLength }}字
+        <div class="mt-3 text-center">
+          <span class="inline-block bg-gray-100 px-3 py-1 rounded-full text-sm font-medium text-primary-600">
+            当前设置: {{ minLength }}-{{ maxLength }}字
+          </span>
         </div>
         
-        <button class="apply-btn" @click="applySettings">
+        <button 
+          class="w-full mt-4 bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-2 px-4 rounded-xl font-medium transition-all duration-300 hover:shadow-md hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary-400"
+          @click="applySettings"
+        >
           应用设置
         </button>
       </div>
-    </div> -->
+    </div>
     
     <!-- 返回按钮 -->
-    <button class="back-btn" @click="goBack">
-      <span class="back-icon">←</span> 返回
+    <button 
+      class="fixed top-5 left-5 py-2 px-4 bg-white rounded-full shadow-md flex items-center z-20 transition-all duration-300 hover:shadow-lg hover:translate-x-[-3px] focus:outline-none focus:ring-2 focus:ring-primary-400"
+      @click="goBack"
+    >
+      <span class="mr-1 text-primary-500">←</span> 
+      <span class="font-medium text-gray-700">返回</span>
     </button>
   </div>
 </template>
@@ -112,12 +134,6 @@ export default {
       // 弹幕相关
       bulletId: 0,
       activeBullets: [],
-      // 轨道系统 - 用于防止弹幕重叠
-      tracks: [],
-      trackCount: 12, // 轨道数量
-      trackHeight: 0,  // 将在mounted中计算
-      shuffledTracks: [], // 打乱顺序的轨道序列
-      currentTrackIndex: 0, // 当前使用的轨道索引，用于轮询
       // 字数设置
       minLength: 5,
       maxLength: 15,
@@ -125,7 +141,9 @@ export default {
       // 颜色列表
       colors: [
         '#ff6b6b', '#ff8e8e', '#ff9e7d', '#ffb88c', 
-        '#4ecdc4', '#7ee8e1', '#ffe66d', '#ffed8a'
+        '#4ecdc4', '#7ee8e1', '#ffe66d', '#ffed8a',
+        '#f472b6', '#ec4899', '#db2777', '#be185d',
+        '#2dd4bf', '#14b8a6', '#0d9488', '#0f766e'
       ]
     }
   },
@@ -151,9 +169,6 @@ export default {
     this.timerInterval = setInterval(() => {
       this.sessionDuration = (Date.now() - this.sessionStartTime) / 1000;
     }, 100);
-
-    // 初始化轨道系统
-    this.initTrackSystem();
   },
   beforeUnmount() {
     // 清理资源
@@ -163,14 +178,11 @@ export default {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
-    
-    // 移除窗口大小改变事件监听器
-    window.removeEventListener('resize', this.handleResize);
   },
   methods: {
     initWebSocket() {
       // 构建WebSocket URL，包含字数范围参数
-      const wsUrl = `wss://emotional-value-api.onmicrosoft.cn/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
+      const wsUrl = `ws://localhost:8000/ws/${encodeURIComponent(this.emotionType)}?min_length=${this.minLength}&max_length=${this.maxLength}`;
       
       // 创建WebSocket连接
       this.socket = new WebSocket(wsUrl);
@@ -193,7 +205,7 @@ export default {
           if (data.is_update) {
             console.log('字数设置已更新:', data.min_length, '-', data.max_length);
             // 可以添加一个临时提示
-            this.addBullet(`字数已更新为 ${data.min_length}-${data.max_length} 字`);
+            this.addBullet(`字数已更新为 ${data.min_length}-${data.max_length} 字`, true);
           }
         } else if (data.type === 'message') {
           // 弹幕消息
@@ -206,7 +218,7 @@ export default {
           // 参数更新确认消息
           console.log('参数更新已确认:', data.min_length, '-', data.max_length);
           // 可以在UI上显示更新成功的提示
-          this.addBullet(`字数设置已成功应用: ${data.min_length}-${data.max_length} 字`);
+          this.addBullet(`字数设置已成功应用: ${data.min_length}-${data.max_length} 字`, true);
         }
       };
       
@@ -221,93 +233,16 @@ export default {
       };
     },
     
-    // 初始化轨道系统
-    initTrackSystem() {
-      // 计算可见区域高度（排除统计面板高度）
-      const statsPanel = document.querySelector('.stats-panel');
-      const statsPanelHeight = statsPanel ? statsPanel.offsetHeight : 60; // 默认值60px
-      
-      // 计算可用于弹幕的区域高度（减去统计面板高度和一些边距）
-      const availableHeight = window.innerHeight - statsPanelHeight - 40; // 40px是顶部和底部的边距
-      
-      // 计算每个轨道的高度
-      this.trackHeight = availableHeight / this.trackCount;
-      
-      // 初始化所有轨道为可用状态
-      this.tracks = Array(this.trackCount).fill(null).map(() => ({
-        occupied: false,  // 当前是否有弹幕占用
-        lastBulletTime: 0 // 上一个弹幕的添加时间
-      }));
-      
-      // 创建并打乱轨道顺序
-      this.shuffleTrackOrder();
-      
-      // 重置当前轨道索引
-      this.currentTrackIndex = 0;
-      
-      // 添加窗口大小改变事件监听器，重新计算轨道高度
-      window.addEventListener('resize', this.handleResize);
-    },
-    
-    // 打乱轨道顺序
-    shuffleTrackOrder() {
-      // 创建一个包含所有轨道索引的数组
-      this.shuffledTracks = Array.from({ length: this.trackCount }, (_, i) => i);
-      
-      // Fisher-Yates 洗牌算法打乱数组
-      for (let i = this.shuffledTracks.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [this.shuffledTracks[i], this.shuffledTracks[j]] = [this.shuffledTracks[j], this.shuffledTracks[i]];
-      }
-    },
-    
-    // 响应窗口大小变化
-    handleResize() {
-      // 重新计算轨道高度
-      const statsPanel = document.querySelector('.stats-panel');
-      const statsPanelHeight = statsPanel ? statsPanel.offsetHeight : 60;
-      const availableHeight = window.innerHeight - statsPanelHeight - 40;
-      this.trackHeight = availableHeight / this.trackCount;
-    },
-    
-    // 找到可用的轨道 - 使用打乱后的轨道顺序
-    findAvailableTrack() {
-      // 获取当前应该使用的轨道索引（从打乱后的轨道序列中取）
-      const trackIndex = this.shuffledTracks[this.currentTrackIndex];
-      
-      // 更新当前索引，准备下一次使用
-      this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackCount;
-      
-      // 当所有轨道都被使用一遍后，重新打乱轨道顺序
-      if (this.currentTrackIndex === 0) {
-        this.shuffleTrackOrder();
-      }
-      
-      return trackIndex;
-    },
-    
     // 添加一条新弹幕
-    addBullet(content) {
-      // 找到一个可用轨道
-      const trackIndex = this.findAvailableTrack();
-      
-      // 计算弹幕在轨道中的top位置（百分比）
-      const top = (trackIndex * this.trackHeight + this.trackHeight / 2) / window.innerHeight * 100;
-      
-      // 标记该轨道为已占用
-      this.tracks[trackIndex].occupied = true;
-      this.tracks[trackIndex].lastBulletTime = Date.now();
+    addBullet(content, isSystem = false) {
+      // 生成随机高度（避免顶部和底部）
+      const top = 10 + Math.random() * 60;
       
       // 随机选择一个颜色
       const color = this.colors[Math.floor(Math.random() * this.colors.length)];
       
-      // 根据文本长度调整动画持续时间
-      // 较长的文本需要更快的速度，减少阻塞问题
-      const baseSpeed = 12; // 基础速度（秒）
-      const contentLength = content.length;
-      // 文本越长，速度因子越小（动画时间越短，速度越快）
-      const speedFactor = Math.max(0.6, Math.min(1, 15 / Math.max(15, contentLength))); 
-      const duration = baseSpeed * speedFactor + Math.random() * 1; // 添加少量随机性
+      // 随机生成动画持续时间（秒），增加持续时间使弹幕不那么密集
+      const duration = 12 + Math.random() * 6;
       
       // 创建新弹幕对象
       const newBullet = {
@@ -316,24 +251,17 @@ export default {
         top,
         color,
         duration,
-        trackIndex, // 存储轨道索引，用于释放轨道
-        timestamp: Date.now() // 记录创建时间戳
+        isSystem
       };
       
       // 添加到活动弹幕列表
       this.activeBullets.push(newBullet);
       
-      // 设置定时器，在动画结束后移除弹幕并释放轨道
+      // 设置定时器，在动画结束后移除弹幕
       setTimeout(() => {
-        // 移除弹幕
         const index = this.activeBullets.findIndex(b => b.id === newBullet.id);
         if (index !== -1) {
           this.activeBullets.splice(index, 1);
-        }
-        
-        // 释放轨道
-        if (this.tracks[trackIndex]) {
-          this.tracks[trackIndex].occupied = false;
         }
       }, duration * 1000);
     },
@@ -381,37 +309,7 @@ export default {
 }
 </script>
 
-<style scoped>
-.bullet-screen-container {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  background-color: var(--background-color);
-}
-
-.bullet-screen {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-}
-
-.bullet-item {
-  position: absolute;
-  white-space: nowrap;
-  font-size: 24px;
-  font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 20px;
-  background-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  animation: bulletMove linear;
-  transform: translateX(100vw);
-}
-
+<style>
 @keyframes bulletMove {
   from {
     transform: translateX(100vw);
@@ -419,6 +317,11 @@ export default {
   to {
     transform: translateX(-100%);
   }
+}
+
+.bullet-item {
+  animation: bulletMove linear;
+  transform: translateX(100vw);
 }
 
 .bullet-enter-active {
@@ -431,193 +334,5 @@ export default {
 
 .bullet-enter-from, .bullet-leave-to {
   opacity: 0;
-}
-
-/* 字数设置面板 */
-.settings-panel {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 250px;
-  background-color: white;
-  border-radius: 15px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  padding: 10px 15px;
-  cursor: pointer;
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.settings-icon {
-  margin-right: 8px;
-}
-
-.settings-title {
-  flex-grow: 1;
-  font-weight: 500;
-}
-
-.settings-content {
-  padding: 15px;
-}
-
-.length-sliders {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 10px;
-}
-
-.slider-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.slider-group label {
-  margin-bottom: 5px;
-  font-size: 14px;
-  color: #666;
-}
-
-.slider {
-  width: 100%;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #e0e0e0;
-  outline: none;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.slider::-webkit-slider-thumb:hover {
-  background: var(--secondary-color);
-  transform: scale(1.1);
-}
-
-.length-preview {
-  font-size: 14px;
-  color: var(--primary-color);
-  font-weight: 500;
-  margin: 10px 0;
-  text-align: center;
-}
-
-.apply-btn {
-  width: 100%;
-  padding: 8px 0;
-  background-color: var(--secondary-color);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.apply-btn:hover {
-  background-color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
-/* 底部统计面板 */
-.stats-panel {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  padding: 15px;
-  background-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.stats-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stats-label {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 5px;
-}
-
-.stats-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.emotion-type {
-  color: var(--secondary-color);
-}
-
-.back-btn {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  padding: 8px 15px;
-  background-color: white;
-  border: none;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.3s ease;
-}
-
-.back-btn:hover {
-  transform: translateX(-3px);
-}
-
-.back-icon {
-  margin-right: 5px;
-}
-
-@media (max-width: 768px) {
-  .bullet-item {
-    font-size: 18px;
-  }
-  
-  .stats-panel {
-    padding: 10px 5px;
-  }
-  
-  .stats-label {
-    font-size: 10px;
-  }
-  
-  .stats-value {
-    font-size: 14px;
-  }
-  
-  .settings-panel {
-    width: 200px;
-  }
 }
 </style>
