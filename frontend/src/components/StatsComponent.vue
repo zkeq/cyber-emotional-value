@@ -1,13 +1,8 @@
 <template>
-  <div class="flex justify-around items-center w-full">
-    <div class="flex flex-col items-center" v-for="(stat, index) in stats" :key="index">
-      <span class="text-xs md:text-sm text-gray-500 mb-1">{{ stat.label }}</span>
-      <span 
-        class="text-base md:text-lg font-bold transition-all duration-300"
-        :class="stat.class === 'emotion-type' ? 'text-secondary-600' : 'text-primary-600'"
-      >
-        {{ stat.value }}
-      </span>
+  <div class="stats-component">
+    <div class="stats-item" v-for="(stat, index) in stats" :key="index">
+      <span class="stats-label">{{ stat.label }}</span>
+      <span class="stats-value" :class="stat.class">{{ stat.value }}</span>
     </div>
   </div>
 </template>
@@ -68,3 +63,43 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.stats-component {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 5px;
+}
+
+.stats-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.emotion-type {
+  color: var(--secondary-color);
+}
+
+@media (max-width: 768px) {
+  .stats-label {
+    font-size: 10px;
+  }
+  
+  .stats-value {
+    font-size: 14px;
+  }
+}
+</style>
