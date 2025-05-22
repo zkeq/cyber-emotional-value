@@ -1,7 +1,7 @@
 <template>
   <div class="bullet-screen-container">
-    <!-- 弹幕区域 -->
-    <div class="bullet-screen" ref="bulletScreen">
+    <!-- 弹幕区域 - 仅在非预览模式下显示 -->
+    <div class="bullet-screen" ref="bulletScreen" v-if="!previewMode">
       <transition-group name="bullet" tag="div">
         <div 
           v-for="bullet in activeBullets" 
@@ -16,6 +16,21 @@
           {{ bullet.content }}
         </div>
       </transition-group>
+    </div>
+    
+    <!-- 预览模式 - 显示所有接收到的消息 -->
+    <div class="preview-container" v-if="previewMode">
+      <h2 class="preview-title">消息预览</h2>
+      <div class="preview-list">
+        <div 
+          v-for="message in allMessages" 
+          :key="message.id" 
+          class="preview-item"
+          :style="{ color: message.color }"
+        >
+          {{ message.content }}
+        </div>
+      </div>
     </div>
     
     <!-- 底部统计信息 -->
@@ -87,6 +102,16 @@
     <button class="back-btn" @click="goBack">
       <span class="back-icon">←</span> 返回
     </button>
+    
+    <!-- 结束按钮 - 切换到预览模式 -->
+    <button class="end-btn" @click="endSession" v-if="!previewMode">
+      结束
+    </button>
+    
+    <!-- 返回弹幕模式按钮 - 仅在预览模式下显示 -->
+    <button class="return-btn" @click="returnToBulletScreen" v-if="previewMode">
+      返回弹幕模式
+    </button>
   </div>
 </template>
 
@@ -126,7 +151,10 @@ export default {
       colors: [
         '#ff6b6b', '#ff8e8e', '#ff9e7d', '#ffb88c', 
         '#4ecdc4', '#7ee8e1', '#ffe66d', '#ffed8a'
-      ]
+      ],
+      // 预览模式相关
+      previewMode: false,
+      allMessages: [] // 存储所有接收到的消息
     }
   },
   created() {
@@ -323,6 +351,14 @@ export default {
       // 添加到活动弹幕列表
       this.activeBullets.push(newBullet);
       
+      // 添加到所有消息列表，用于预览模式
+      this.allMessages.push({
+        id: newBullet.id,
+        content: newBullet.content,
+        color: newBullet.color,
+        timestamp: newBullet.timestamp
+      });
+      
       // 设置定时器，在动画结束后移除弹幕并释放轨道
       setTimeout(() => {
         // 移除弹幕
@@ -373,6 +409,26 @@ export default {
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     },
     
+    // 结束会话，切换到预览模式
+    endSession() {
+      this.previewMode = true;
+      
+      // 可选：关闭WebSocket连接
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.close();
+      }
+    },
+    
+    // 返回弹幕模式
+    returnToBulletScreen() {
+      this.previewMode = false;
+      
+      // 如果WebSocket已关闭，可以选择重新连接
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        this.initWebSocket();
+      }
+    },
+    
     // 返回首页
     goBack() {
       this.$router.push('/');
@@ -410,6 +466,46 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   animation: bulletMove linear;
   transform: translateX(100vw);
+}
+
+/* 预览模式样式 */
+.preview-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100vh - 80px); /* 减去底部统计面板的高度 */
+  padding: 20px;
+  overflow-y: auto;
+  background-color: var(--background-color);
+}
+
+.preview-title {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+}
+
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 60px; /* 为底部按钮留出空间 */
+}
+
+.preview-item {
+  font-size: 18px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s;
+}
+
+.preview-item:hover {
+  transform: translateX(5px);
+  background-color: rgba(255, 255, 255, 0.9);
 }
 
 @keyframes bulletMove {
@@ -599,9 +695,59 @@ export default {
   margin-right: 5px;
 }
 
+/* 结束按钮样式 */
+.end-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 8px 20px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.end-btn:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-3px);
+}
+
+/* 返回弹幕模式按钮样式 */
+.return-btn {
+  position: fixed;
+  bottom: 90px; /* 在统计面板上方 */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 25px;
+  background-color: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.return-btn:hover {
+  background-color: var(--primary-color);
+  transform: translateX(-50%) translateY(-3px);
+}
+
 @media (max-width: 768px) {
   .bullet-item {
     font-size: 18px;
+  }
+  
+  .preview-item {
+    font-size: 16px;
+    padding: 10px;
   }
   
   .stats-panel {
@@ -616,8 +762,9 @@ export default {
     font-size: 14px;
   }
   
-  .settings-panel {
-    width: 200px;
+  .end-btn, .return-btn {
+    padding: 6px 15px;
+    font-size: 14px;
   }
 }
 </style>
