@@ -74,7 +74,7 @@ class MainPage {
         } else {
             // Real WebSocket connection
             this.wsManager = new WebSocketManager({
-                url: 'ws://localhost:8000/ws/praise', // Standard WebSocket URL
+                url: 'wss:////emotional-value-api-flowith.onmicrosoft.cn/ws/praise', // Standard WebSocket URL
                 onMessage: (messages) => this.handlePraiseMessages(messages),
                 onError: (error) => this.handleWebSocketError(error),
                 onConnect: () => {
