@@ -1,0 +1,122 @@
+/* Custom styles for the praise website */
+
+/* Font configuration */
+body {
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-feature-settings: 'kern' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Danmaku animations */
+@keyframes danmaku {
+    0% {
+        transform: translateX(100vw);
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+    }
+    95% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+/* Custom fade in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Gentle bounce animation for background elements */
+@keyframes bounceGentle {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Hover effects for interactive elements */
+.suggestion-btn {
+    transition: all 0.2s ease;
+}
+
+.suggestion-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced focus styles */
+input:focus {
+    box-shadow: 0 0 0 3px rgba(252, 201, 209, 0.3);
+}
+
+/* Responsive danmaku display */
+@media (max-width: 768px) {
+    .danmaku-item {
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .danmaku-item {
+        font-size: 11px !important;
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(252, 201, 209, 0.5);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(252, 201, 209, 0.7);
+}
+
+/* Loading state styles */
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Backdrop blur support fallback */
+@supports not (backdrop-filter: blur(12px)) {
+    .backdrop-blur-sm {
+        background: rgba(255, 255, 255, 0.9);
+    }
+}
+
