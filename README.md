@@ -2,6 +2,12 @@
 
 > 💝 一个充满爱与温暖的在线夸夸平台，为你源源不断地输送情绪价值~
 
+## 网站地址
+
+- 主站: https://kua.icodeq.com
+- 主站：https://cyber-emotional-value.icodeq.com
+- flowith版：https://cyber-emotional-value-flowith.icodeq.com
+
 ## ✨ 特性
 
 - 🎯 **实时弹幕** - 美丽的弹幕动画效果，让温暖的话语飘过你的屏幕
