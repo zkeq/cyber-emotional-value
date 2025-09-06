@@ -136,22 +136,35 @@ class DeepSeekService:
             min_length: 最小字数
             max_length: 最大字数
         """
+        # 线程局部变量，确保独立性
+        thread_queue_name = str(queue_name)
+        thread_token_counter = str(token_counter)
+        thread_session_id = str(session_id)
+        thread_min_length = int(min_length)
+        thread_max_length = int(max_length)
+        
         message_index = 0
         
+        print(f"[会话 {thread_session_id} 预设消息] 开始发送预设消息 ({thread_min_length}-{thread_max_length} 字)")
+        
         # 过滤符合长度要求的预设消息
-        filtered_messages = [msg for msg in settings.DEFAULT_MESSAGES if min_length <= len(msg) <= max_length]
+        filtered_messages = [msg for msg in settings.DEFAULT_MESSAGES if thread_min_length <= len(msg) <= thread_max_length]
         
         # 如果没有符合要求的消息，使用原始列表
         if not filtered_messages:
             filtered_messages = settings.DEFAULT_MESSAGES
+            print(f"[会话 {thread_session_id} 预设消息] 警告: 没有符合长度要求的预设消息，使用全部消息")
+        else:
+            print(f"[会话 {thread_session_id} 预设消息] 找到 {len(filtered_messages)} 条符合要求的预设消息")
         
         # 安全地检查会话状态
         while True:
             is_active = False
             with self.lock:
-                is_active = self.active_sessions.get(session_id, False)
+                is_active = self.active_sessions.get(thread_session_id, False)
             
             if not is_active:
+                print(f"[会话 {thread_session_id} 预设消息] 会话已停止，退出发送循环")
                 break
                 
             # 从预设消息中选择一条
@@ -160,18 +173,20 @@ class DeepSeekService:
             
             # 计算token数并更新计数器
             message_tokens = len(message) // 2 + 1
-            redis_client.increment_counter(token_counter, message_tokens)
+            redis_client.increment_counter(thread_token_counter, message_tokens)
             
             # 将消息放入Redis队列
-            redis_client.push_message(queue_name, json.dumps({
+            redis_client.push_message(thread_queue_name, json.dumps({
                 "content": message,
                 "tokens": message_tokens
             }))
             
+            print(f"[会话 {thread_session_id} 预设消息] 发送: {message} (tokens: {message_tokens})")
+            
             # 控制生成速率，降低密度
             time.sleep(1.5 / settings.MESSAGES_PER_SECOND)
         
-        print(f"预设消息生成线程已结束: {session_id}")
+        print(f"[会话 {thread_session_id} 预设消息] 预设消息生成线程已结束")
     
     def _request_deepseek_api(self, emotion_type, queue_name, token_counter, session_id, thread_id, min_length, max_length):
         """请求DeepSeek API生成情绪价值消息
@@ -185,6 +200,16 @@ class DeepSeekService:
             min_length: 最小字数
             max_length: 最大字数
         """
+        # 线程局部变量，确保每个线程都有独立的副本
+        thread_emotion_type = str(emotion_type)
+        thread_min_length = int(min_length)
+        thread_max_length = int(max_length)
+        thread_session_id = str(session_id)
+        thread_queue_name = str(queue_name)
+        thread_token_counter = str(token_counter)
+        
+        print(f"[会话 {thread_session_id} 线程 {thread_id}] 开始生成 '{thread_emotion_type}' 类型消息 ({thread_min_length}-{thread_max_length} 字)")
+        
         # 创建HTTP客户端
         client = httpx.Client(timeout=30.0)
         
@@ -194,39 +219,40 @@ class DeepSeekService:
             "Authorization": f"Bearer {self.api_key}"
         }
         
-        # 构建优化后的提示词，更有温度和人情味
-        prompt = f"""请以朋友的口吻，生成一句能给人{emotion_type}情绪价值的暖心话语，要求：
-1. 字数在{min_length}-{max_length}之间
-2. 语气真诚温暖，像朋友间的鼓励
-3. 表达自然流畅，有共情和理解
-4. 不要使用标点符号
-5. 直接输出内容，不要有任何前缀或解释
-"""
-        
-        # 请求参数，提高温度使输出更有变化
-        data = {
-            "model": "deepseek-chat",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.8,
-            "max_tokens": 50
-        }
-        
         # 持续请求，直到会话结束
         while True:
             # 安全地检查会话状态
             is_active = False
             with self.lock:
-                is_active = self.active_sessions.get(session_id, False)
+                is_active = self.active_sessions.get(thread_session_id, False)
             
             if not is_active:
+                print(f"[会话 {thread_session_id} 线程 {thread_id}] 会话已停止，退出生成循环")
                 break
                 
             try:
+                # 在每次请求时重新构建提示词，确保使用当前线程的参数
+                current_prompt = f"""请以朋友的口吻，生成一句能给人{thread_emotion_type}情绪价值的暖心话语，要求：
+1. 字数在{thread_min_length}-{thread_max_length}之间
+2. 语气真诚温暖，像朋友间的鼓励
+3. 表达自然流畅，有共情和理解
+4. 不要使用标点符号
+5. 直接输出内容，不要有任何前缀或解释
+"""
+                
+                # 每次请求都构建新的数据对象，避免引用共享
+                request_data = {
+                    "model": "deepseek-ai/DeepSeek-V3",
+                    "messages": [{"role": "user", "content": current_prompt}],
+                    "temperature": 0.8,
+                    "max_tokens": 50
+                }
+                
                 # 发送请求
                 response = client.post(
                     f"{self.base_url}/v1/chat/completions",
                     headers=headers,
-                    json=data
+                    json=request_data
                 )
                 
                 # 检查响应状态
@@ -236,46 +262,59 @@ class DeepSeekService:
                     tokens = result.get("usage", {}).get("total_tokens", len(message) // 2 + 1)
                     
                     # 过滤不符合长度要求的消息
-                    if min_length <= len(message) <= max_length:
+                    if thread_min_length <= len(message) <= thread_max_length:
                         # 更新token计数
-                        redis_client.increment_counter(token_counter, tokens)
+                        redis_client.increment_counter(thread_token_counter, tokens)
                         
                         # 将消息放入Redis队列
-                        redis_client.push_message(queue_name, json.dumps({
+                        redis_client.push_message(thread_queue_name, json.dumps({
                             "content": message,
                             "tokens": tokens
                         }))
                         
-                        print(f"会话 {session_id} 线程 {thread_id} 生成消息: {message}, tokens: {tokens}")
+                        print(f"[会话 {thread_session_id} 线程 {thread_id}] 成功生成 '{thread_emotion_type}' 消息: {message} (tokens: {tokens})")
+                        
+                        ime.sleep(1)
+                        # 成功生成消息后立即继续，不延迟
+                        continue
                     else:
-                        print(f"会话 {session_id} 线程 {thread_id} 生成的消息长度不符合要求: {message}")
+                        print(f"[会话 {thread_session_id} 线程 {thread_id}] 消息长度不符合要求 ({len(message)} 字): {message}")
+                        # 长度不符合要求，短暂延迟后重试
+                        time.sleep(0.5)
                 else:
-                    print(f"会话 {session_id} 线程 {thread_id} API请求失败: {response.status_code} {response.text}")
+                    print(f"[会话 {thread_session_id} 线程 {thread_id}] API请求失败: {response.status_code} {response.text}")
                     # 如果API请求失败，使用预设消息
-                    filtered_messages = [msg for msg in settings.DEFAULT_MESSAGES if min_length <= len(msg) <= max_length]
+                    filtered_messages = [msg for msg in settings.DEFAULT_MESSAGES if thread_min_length <= len(msg) <= thread_max_length]
                     if not filtered_messages:
                         filtered_messages = settings.DEFAULT_MESSAGES
                     
-                    message_index = int(time.time()) % len(filtered_messages)
+                    # 使用线程ID和时间戳确保每个线程获取不同的消息
+                    message_index = (int(time.time()) + thread_id) % len(filtered_messages)
                     message = filtered_messages[message_index]
                     tokens = len(message) // 2 + 1
                     
                     # 更新token计数
-                    redis_client.increment_counter(token_counter, tokens)
+                    redis_client.increment_counter(thread_token_counter, tokens)
                     
                     # 将消息放入Redis队列
-                    redis_client.push_message(queue_name, json.dumps({
+                    redis_client.push_message(thread_queue_name, json.dumps({
                         "content": message,
                         "tokens": tokens
                     }))
+                    
+                    print(f"[会话 {thread_session_id} 线程 {thread_id}] 使用预设消息 '{thread_emotion_type}': {message}")
+                    
+                    # API失败后短暂延迟再重试
+                    time.sleep(1.0)
             
             except Exception as e:
-                print(f"会话 {session_id} 线程 {thread_id} 发生异常: {str(e)}")
-            
-            # 控制请求频率，降低密度
-            time.sleep(3)  # 每个线程每3秒请求一次，避免API限流和减少弹幕密度
+                print(f"[会话 {thread_session_id} 线程 {thread_id}] 发生异常: {str(e)}")
+                # 异常情况下延迟重试
+                time.sleep(2.0)
         
-        print(f"会话 {session_id} API请求线程 {thread_id} 已结束")
+        # 关闭HTTP客户端
+        client.close()
+        print(f"[会话 {thread_session_id} 线程 {thread_id}] '{thread_emotion_type}' 类型消息生成线程已结束")
 
 # 创建全局服务实例
 deepseek_service = DeepSeekService()

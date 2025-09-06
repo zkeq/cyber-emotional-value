@@ -13,9 +13,9 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # 测试配置
-BASE_URL = "ws://localhost:8000/ws"
-CONCURRENT_USERS = 5  # 并发用户数
-TEST_DURATION = 30  # 测试持续时间（秒）
+BASE_URL = "ws://localhost:9096/ws"
+CONCURRENT_USERS = 3  # 并发用户数
+TEST_DURATION = 15  # 测试持续时间（秒）
 EMOTION_TYPES = ["鼓励", "温暖", "治愈", "自信", "快乐"]
 
 async def simulate_user(user_id):
