@@ -242,7 +242,7 @@ class DeepSeekService:
                 
                 # 每次请求都构建新的数据对象，避免引用共享
                 request_data = {
-                    "model": "deepseek-ai/DeepSeek-V3",
+                    "model": "deepseek-chat",
                     "messages": [{"role": "user", "content": current_prompt}],
                     "temperature": 0.8,
                     "max_tokens": 50
